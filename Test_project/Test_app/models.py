@@ -1,38 +1,27 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser,User
+from django.contrib.auth.models import AbstractUser
+from cryptography.fernet import Fernet
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from rest_framework.authtoken.models import Token
+from django.conf import settings
 
-class CustomUser(models.Model):
- cnic = models.CharField(max_length=255)
- phone_number = models.CharField(max_length=15)
+key = b'6x_kZUE0hu1siWW00yIcJj0u6xWHNVV7k1Euia_LHQ4='
+fernet=Fernet(key)
+class Custom_User(AbstractUser):
+ cnic=models.CharField(max_length=100)
+ Phone_Number=models.CharField(max_length=13)
  
- def save(self, *args, **kwargs):
-  self.cnic = self.encrypt_cnic(self.cnic)
-  super(CustomUser, self).save(*args, **kwargs)
-
- def encrypt_cnic(self, cnic):
-  encryption_dict = self.encryption_dict()
-  encrypted_cnic = ''
-  for char in cnic:
-   encrypted_cnic += encryption_dict.get(char, char)
-  return encrypted_cnic
- def decrypt_cnic(self):
-  decryption_dict = self.decryption_dict()
-  decrypted_cnic=''
-  for char in decryption_dict:
-    decrypted_cnic+=decryption_dict.get(char,char)
-    return decrypted_cnic
-    
-def encryption_dict():
-  return {
-            '0': 'a', '1': 'b', '2': 'c', '3': 'd', '4': 'e',
-            '5': 'f', '6': 'g', '7': 'h', '8': 'i', '9': 'j'
-    }
-  
-def decryption_dict(self):
-  dict=self.encryption_dict()
-  decryption_dict=reverse(dict)
-  return decryption_dict
-  
-def __str__(self):
-   return f"{self.phone_number}"
  
+ def save(self,*args, **kwargs):
+  self.cnic=(fernet.encrypt(self.cnic.encode())).decode()
+  super().save(*args, **kwargs)
+ 
+ 
+ 
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+ if created:
+  token=Token.objects.create(user=instance)
+  print(f"{token.key}:{instance}")
+  
